@@ -51,9 +51,7 @@ jobs:
 
       - name: Build Android APK
         run: |
-          cordova build android --release --buildConfig
-        env:
-          JAVA_HOME: ${{ java.home }}
+          cordova build android --release
 
       - name: Sign APK
         run: |
@@ -67,3 +65,11 @@ jobs:
           name: WhackAMole-APK
           path: WhackAMole-release.apk
           retention-days: 30
+
+      - name: Create Release
+        if: contains(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: WhackAMole-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
