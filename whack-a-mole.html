@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>打地鼠游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 10px;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            margin-bottom: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 20px;
+        }
+
+        .stat {
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 400px;
+            width: 100%;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+        }
+
+        .hole {
+            aspect-ratio: 1;
+            background: #8B4513;
+            border-radius: 50%;
+            position: relative;
+            cursor: pointer;
+            overflow: hidden;
+            box-shadow: inset 0 -5px 15px rgba(0,0,0,0.4);
+            border: 3px solid #654321;
+            transition: transform 0.1s;
+        }
+
+        .hole:active {
+            transform: scale(0.95);
+        }
+
+        .hole::before {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 40%;
+            background: #654321;
+            border-radius: 50% 50% 0 0;
+        }
+
+        .mole {
+            position: absolute;
+            bottom: -100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70%;
+            height: 80%;
+            background: #8B7355;
+            border-radius: 50% 50% 40% 40%;
+            transition: bottom 0.2s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+        }
+
+        .mole.up {
+            bottom: 10%;
+        }
+
+        .mole::before {
+            content: '🐹';
+            font-size: 3em;
+        }
+
+        .mole.hit::before {
+            content: '😵';
+            animation: shake 0.3s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(-50%) rotate(0deg); }
+            25% { transform: translateX(-50%) rotate(-10deg); }
+            75% { transform: translateX(-50%) rotate(10deg); }
+        }
+
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s;
+            touch-action: manipulation;
+        }
+
+        button:active {
+            transform: scale(0.95);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .game-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .game-over.show {
+            display: flex;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .game-over h2 {
+            color: #764ba2;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+
+        .game-over p {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .difficulty {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .difficulty button {
+            padding: 10px 20px;
+            font-size: 1em;
+        }
+
+        .difficulty button.active {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .score-popup {
+            position: absolute;
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            animation: scoreFloat 0.8s ease-out forwards;
+            pointer-events: none;
+        }
+
+        @keyframes scoreFloat {
+            0% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-50px) scale(1.5);
+            }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .game-board {
+                gap: 10px;
+                padding: 15px;
+            }
+
+            .stat {
+                padding: 8px 15px;
+                font-size: 1em;
+            }
+
+            button {
+                padding: 12px 30px;
+                font-size: 1em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎮 打地鼠</h1>
+        <div class="stats">
+            <div class="stat">得分: <span id="score">0</span></div>
+            <div class="stat">时间: <span id="time">30</span>s</div>
+            <div class="stat">最高分: <span id="highScore">0</span></div>
+        </div>
+    </div>
+
+    <div class="game-board" id="gameBoard">
+        <div class="hole" data-index="0"><div class="mole"></div></div>
+        <div class="hole" data-index="1"><div class="mole"></div></div>
+        <div class="hole" data-index="2"><div class="mole"></div></div>
+        <div class="hole" data-index="3"><div class="mole"></div></div>
+        <div class="hole" data-index="4"><div class="mole"></div></div>
+        <div class="hole" data-index="5"><div class="mole"></div></div>
+        <div class="hole" data-index="6"><div class="mole"></div></div>
+        <div class="hole" data-index="7"><div class="mole"></div></div>
+        <div class="hole" data-index="8"><div class="mole"></div></div>
+    </div>
+
+    <div class="controls">
+        <div class="difficulty">
+            <button data-difficulty="easy" class="active">简单</button>
+            <button data-difficulty="medium">中等</button>
+            <button data-difficulty="hard">困难</button>
+        </div>
+        <button id="startBtn">开始游戏</button>
+    </div>
+
+    <div class="game-over" id="gameOver">
+        <div class="game-over-content">
+            <h2>游戏结束!</h2>
+            <p>你的得分: <span id="finalScore">0</span></p>
+            <p id="newRecord" style="display: none; color: #f5576c;">🎉 新纪录!</p>
+            <button onclick="restartGame()">再玩一次</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 30;
+        let gameInterval;
+        let moleInterval;
+        let currentMole = null;
+        let isPlaying = false;
+        let difficulty = 'easy';
+        let highScore = localStorage.getItem('whackAMoleHighScore') || 0;
+
+        const difficultySettings = {
+            easy: { moleInterval: 1500, moleStayTime: 1200 },
+            medium: { moleInterval: 1000, moleStayTime: 900 },
+            hard: { moleInterval: 700, moleStayTime: 600 }
+        };
+
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const highScoreDisplay = document.getElementById('highScore');
+        const startBtn = document.getElementById('startBtn');
+        const gameBoard = document.getElementById('gameBoard');
+        const holes = document.querySelectorAll('.hole');
+        const moles = document.querySelectorAll('.mole');
+        const gameOver = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const newRecordDisplay = document.getElementById('newRecord');
+
+        highScoreDisplay.textContent = highScore;
+
+        function showRandomMole() {
+            if (currentMole) {
+                currentMole.classList.remove('up');
+            }
+
+            const availableHoles = Array.from(holes).filter(hole => !hole.classList.contains('hit'));
+            if (availableHoles.length === 0) return;
+
+            const randomHole = availableHoles[Math.floor(Math.random() * availableHoles.length)];
+            const mole = randomHole.querySelector('.mole');
+
+            mole.classList.add('up');
+            currentMole = mole;
+
+            const settings = difficultySettings[difficulty];
+            setTimeout(() => {
+                if (mole.classList.contains('up') && !mole.classList.contains('hit')) {
+                    mole.classList.remove('up');
+                }
+            }, settings.moleStayTime);
+        }
+
+        function whackMole(e) {
+            if (!isPlaying) return;
+            if (!e.target.classList.contains('mole')) return;
+            if (!e.target.classList.contains('up')) return;
+
+            const mole = e.target;
+            if (mole.classList.contains('hit')) return;
+
+            mole.classList.add('hit');
+            score += 10;
+            scoreDisplay.textContent = score;
+
+            showScorePopup(e.clientX, e.clientY, '+10');
+
+            playSound();
+
+            setTimeout(() => {
+                mole.classList.remove('up', 'hit');
+            }, 300);
+        }
+
+        function showScorePopup(x, y, text) {
+            const popup = document.createElement('div');
+            popup.className = 'score-popup';
+            popup.textContent = text;
+            popup.style.left = x + 'px';
+            popup.style.top = y + 'px';
+            document.body.appendChild(popup);
+
+            setTimeout(() => {
+                popup.remove();
+            }, 800);
+        }
+
+        function playSound() {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.frequency.value = 800;
+            oscillator.type = 'sine';
+
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.1);
+        }
+
+        function startGame() {
+            score = 0;
+            timeLeft = 30;
+            scoreDisplay.textContent = score;
+            timeDisplay.textContent = timeLeft;
+            isPlaying = true;
+            startBtn.disabled = true;
+
+            const settings = difficultySettings[difficulty];
+
+            gameInterval = setInterval(() => {
+                timeLeft--;
+                timeDisplay.textContent = timeLeft;
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);
+
+            moleInterval = setInterval(showRandomMole, settings.moleInterval);
+        }
+
+        function endGame() {
+            isPlaying = false;
+            clearInterval(gameInterval);
+            clearInterval(moleInterval);
+
+            if (currentMole) {
+                currentMole.classList.remove('up');
+            }
+
+            moles.forEach(mole => {
+                mole.classList.remove('up', 'hit');
+            });
+
+            startBtn.disabled = false;
+
+            finalScoreDisplay.textContent = score;
+
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('whackAMoleHighScore', highScore);
+                highScoreDisplay.textContent = highScore;
+                newRecordDisplay.style.display = 'block';
+            } else {
+                newRecordDisplay.style.display = 'none';
+            }
+
+            gameOver.classList.add('show');
+        }
+
+        function restartGame() {
+            gameOver.classList.remove('show');
+            startGame();
+        }
+
+        holes.forEach(hole => {
+            hole.addEventListener('click', whackMole);
+            hole.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                whackMole(e);
+            });
+        });
+
+        startBtn.addEventListener('click', startGame);
+
+        document.querySelectorAll('.difficulty button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (isPlaying) return;
+
+                document.querySelectorAll('.difficulty button').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                difficulty = e.target.dataset.difficulty;
+            });
+        });
+
+        // 防止双击缩放
+        document.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+        });
+
+        // 防止长按选择
+        document.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+        });
+    </script>
+</body>
+</html>
