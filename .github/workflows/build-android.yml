@@ -39,20 +39,25 @@ jobs:
           echo "Installing Android SDK components..."
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Copy game file
+      - name: Initialize Cordova project
         run: |
-          cp whack-a-mole.html www/index.html
+          cordova create build com.whackamole.game "打地鼠"
+          cp whack-a-mole.html build/www/index.html
+          cp config.xml build/
 
       - name: Add Android platform
+        working-directory: ./build
         run: |
           cordova platform add android@latest
           cordova platform list
 
       - name: Build Android APK
+        working-directory: ./build
         run: |
           cordova build android --release
 
       - name: Sign APK
+        working-directory: ./build
         run: |
           keytool -genkeypair -v -keystore whackamole-release.keystore -alias whackamole -keyalg RSA -keysize 2048 -validity 10000 -storepass whackamole123 -keypass whackamole123 -dname "CN=WhackAMole, OU=Game, O=WhackAMole, L=Beijing, ST=Beijing, C=CN"
           jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore whackamole-release.keystore -storepass whackamole123 -keypass whackamole123 platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk whackamole
@@ -62,13 +67,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: WhackAMole-APK
-          path: WhackAMole-release.apk
+          path: build/WhackAMole-release.apk
           retention-days: 30
 
       - name: Create Release
         if: contains(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: WhackAMole-release.apk
+          files: build/WhackAMole-release.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
