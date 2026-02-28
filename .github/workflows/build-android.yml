@@ -1,0 +1,69 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Cordova
+        run: |
+          npm install -g cordova
+          cordova --version
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android dependencies
+        run: |
+          echo "Installing Android SDK components..."
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Copy game file
+        run: |
+          cp whack-a-mole.html www/index.html
+
+      - name: Add Android platform
+        run: |
+          cordova platform add android@latest
+          cordova platform list
+
+      - name: Build Android APK
+        run: |
+          cordova build android --release --buildConfig
+        env:
+          JAVA_HOME: ${{ java.home }}
+
+      - name: Sign APK
+        run: |
+          keytool -genkeypair -v -keystore whackamole-release.keystore -alias whackamole -keyalg RSA -keysize 2048 -validity 10000 -storepass whackamole123 -keypass whackamole123 -dname "CN=WhackAMole, OU=Game, O=WhackAMole, L=Beijing, ST=Beijing, C=CN"
+          jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore whackamole-release.keystore -storepass whackamole123 -keypass whackamole123 platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk whackamole
+          ${ANDROID_HOME}/build-tools/34.0.0/zipalign -v 4 platforms/android/app/build/outputs/apk/release/app-release-unsigned.apk WhackAMole-release.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhackAMole-APK
+          path: WhackAMole-release.apk
+          retention-days: 30
